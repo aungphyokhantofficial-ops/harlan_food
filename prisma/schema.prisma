@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+datasource db {
+  provider = "sqlite"
+}
+
+// 1. User Management
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+  role     Role   @default(STAFF)
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+// 2. Menu System
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  menus Menu[]
+}
+
+model Menu {
+  id           Int          @id @default(autoincrement())
+  name         String
+  description  String?
+  price        Float        // SQLite အတွက် Float သုံးရပါမယ်
+  image        String?
+  categoryId   Int
+  category     Category     @relation(fields: [categoryId], references: [id])
+  availability Availability @default(ALL_DAY)
+}
+
+enum Availability {
+  LUNCH
+  DINNER
+  ALL_DAY
+}
+
+// 3. Opening Hours
+model OpeningHour {
+  id        Int     @id @default(autoincrement())
+  day       Day
+  shiftName String
+  openTime  String
+  closeTime String
+  isClosed  Boolean @default(false)
+}
+
+enum Day {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+// 4. Reservation System
+model Reservation {
+  id             Int               @id @default(autoincrement())
+  customerName   String
+  customerEmail  String
+  customerPhone  String
+  guestCount     Int
+  bookingDate    DateTime
+  bookingTime    String
+  seatingArea    SeatingArea       @default(INDOOR)
+  specialRequest String?
+  status         ReservationStatus @default(PENDING)
+  createdAt      DateTime          @default(now())
+}
+
+enum SeatingArea {
+  INDOOR
+  TERRACE
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
