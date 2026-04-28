@@ -1,90 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
 }
+
 datasource db {
   provider = "sqlite"
 }
 
-// 1. User Management
+
+// 1. Admin & Authentication Layer
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  password String
-  role     Role   @default(STAFF)
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String   // Hashed password
+  role      String   @default("ADMIN") 
+  createdAt DateTime @default(now())
 }
 
-enum Role {
-  ADMIN
-  STAFF
-}
-
-// 2. Menu System
+// 2. Menu Management (Harlan's Dining & Wine Selection)
 model Category {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  menus Menu[]
+  id        Int        @id @default(autoincrement())
+  name      String     @unique // "Main Menu", "Wine List", "Desserts"
+  slug      String     @unique // URL အတွက် (ဥပမာ- wine-cellar)
+  type      String     @default("FOOD") // "FOOD" သို့မဟုတ် "WINE"
+  foodItems FoodItem[]
 }
 
-model Menu {
-  id           Int          @id @default(autoincrement())
-  name         String
-  description  String?
-  price        Float        // SQLite အတွက် Float သုံးရပါမယ်
-  image        String?
-  categoryId   Int
-  category     Category     @relation(fields: [categoryId], references: [id])
-  availability Availability @default(ALL_DAY)
+model FoodItem {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?  
+  price       Float?   // အချို့ Fine Dining Menu များတွင် ဈေးနှုန်းမပြပါ
+  image       String?
+  isFeatured  Boolean  @default(false) // Home page မှာပြရန်
+  isAvailable Boolean  @default(true)  // ပစ္စည်းပြတ်ပါက ပိတ်ရန်
+  categoryId  Int
+  category    Category @relation(fields: [categoryId], references: [id])
 }
 
-enum Availability {
-  LUNCH
-  DINNER
-  ALL_DAY
+// 3. Event Spaces & Private Dining (Harlan's Core Experience)
+model Venue {
+  id          Int      @id @default(autoincrement())
+  name        String   // "The Terrace", "Private Room A"
+  slug        String   @unique
+  description String?  
+  capacity    Int      // ဧည့်သည်ဆံ့ဝင်ဦးရေ
+  image       String?
+  inquiries   Inquiry[]
 }
 
-// 3. Opening Hours
-model OpeningHour {
-  id        Int     @id @default(autoincrement())
-  day       Day
-  shiftName String
-  openTime  String
-  closeTime String
-  isClosed  Boolean @default(false)
-}
-
-enum Day {
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-  SUNDAY
-}
-
-// 4. Reservation System
-model Reservation {
-  id             Int               @id @default(autoincrement())
-  customerName   String
-  customerEmail  String
-  customerPhone  String
+// 4. Inquiries & Reservations (Customer Leads)
+model Inquiry {
+  id             Int      @id @default(autoincrement())
+  type           String   // "RESERVATION" သို့မဟုတ် "EVENT"
+  name           String
+  email          String
+  phone          String
+  eventDate      DateTime
   guestCount     Int
-  bookingDate    DateTime
-  bookingTime    String
-  seatingArea    SeatingArea       @default(INDOOR)
-  specialRequest String?
-  status         ReservationStatus @default(PENDING)
-  createdAt      DateTime          @default(now())
+  message        String?  
+  status         String   @default("PENDING") // "PENDING", "CONFIRMED", "CANCELLED"
+  venueId        Int?
+  venue          Venue?   @relation(fields: [venueId], references: [id])
+  createdAt      DateTime @default(now())
 }
 
-enum SeatingArea {
-  INDOOR
-  TERRACE
+
+
+// 6. Gallery (Brand Image)
+model Gallery {
+  id       Int     @id @default(autoincrement())
+  imageUrl String
+  category String  // "INTERIOR", "CUISINE", "EVENTS"
+  caption  String?
 }
 
-enum ReservationStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
+model Hours {
+  id          Int      @id @default(autoincrement())
+  dayOfWeek   String   // "Monday", "Tuesday", etc. သို့မဟုတ် "Daily"
+  shiftName   String?  // "Lunch", "Dinner", "All Day"
+  openTime    String   // "12:00 PM"
+  closeTime   String   // "10:30 PM"
+  isClosed    Boolean  @default(false) // ထိုနေ့တွင် ဆိုင်ပိတ်ပါက true
+  updatedAt   DateTime @updatedAt
 }
+
