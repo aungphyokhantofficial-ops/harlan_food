@@ -6,69 +6,236 @@ export const router = express.Router();
 
 // --- Public Route ---
 
-// 1. Categories အားလုံးကို ယူတဲ့ Route
+// 1. GET ALL (Filter by type - e.g., ?type=Daily)
+// GET: http://localhost:5000/api/categories?type=Daily
+
 router.get("/categories", async (req, res) => {
   try {
+    // ၁. Postman ရဲ့ Params tab ကနေ 'menuType' ဆိုတဲ့ နာမည်နဲ့ ပို့တာကို ဖတ်မယ်
+    const filterType = req.query.menuType;
+
+    console.log(filterType); // Terminal မှာ Daily/Morning တက်လာလား ကြည့်ပါ
+
     const categories = await prisma.menuCategory.findMany({
-      orderBy: { id: "asc" },
-      // Category နဲ့အတူ ၎င်းအောက်မှာရှိတဲ့ items တွေကိုပါ တစ်ခါတည်း သိချင်ရင် include ကို သုံးပါ
-      // ဒါပေမယ့် item အများကြီးရှိရင် include မသုံးဘဲ /items route ကိုပဲ သီးသန့်ခေါ်တာ ပိုမြန်ပါတယ်
+      where: {
+        // filterType မှာ တန်ဖိုးရှိမှသာ where အလုပ်လုပ်အောင် ရေးထားပါတယ်
+        menuType: filterType ? String(filterType) : undefined,
+      },
       include: {
         items: true,
       },
     });
-    return res.json(categories);
+
+    res.json(categories);
   } catch (error) {
-    return res.status(500).json({ message: "Error fetching categories" });
+    console.error(error);
+    res.status(500).json({ error: "Server Error" });
   }
 });
 
-// 3. Category တစ်ခုတည်းကိုပဲ ယူမယ့် Route (ဒါလေး ထပ်ထည့်ပေးပါ)
-router.get("/categories/:id", async (req, res) => {
+// 2. CREATE (New Category)
+router.post("/categories", async (req, res) => {
+  try {
+    const { name, menuType, image } = req.body;
+    const newCategory = await prisma.menuCategory.create({
+      data: { name, menuType, image },
+    });
+    res.status(201).json(newCategory);
+  } catch (error) {
+    res.status(400).json({ error: "Create failed" });
+  }
+});
+
+// 3. UPDATE (Category by ID)
+router.put("/categories/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const category = await prisma.menuCategory.findUnique({
+    const { name, menuType, image } = req.body;
+    const updated = await prisma.menuCategory.update({
+      where: { id: Number(id) },
+      data: { name, menuType, image },
+    });
+    res.json(updated);
+  } catch (error) {
+    res.status(400).json({ error: "Update failed" });
+  }
+});
+
+// 4. DELETE (Category by ID)
+router.delete("/categories/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.menuCategory.delete({
+      where: { id: Number(id) },
+    });
+    res.json({ message: "Deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ error: "Delete failed" });
+  }
+});
+
+/**
+ * 1. GET - Fetch Categories & Items by Type
+ * GET: /api/menu?type=Daily
+ */
+router.get("/menu", async (req, res) => {
+  try {
+    const { type } = req.query;
+
+    const data = await prisma.menuCategory.findMany({
       where: {
-        id: Number(id),
+        ...(type ? { menuType: String(type) } : {}),
       },
       include: {
-        items: true, // category နဲ့အတူ items တွေကိုပါ တစ်ခါတည်း ပြချင်ရင်
+        items: true, // ✅ Category နဲ့အတူ Items data တွေပါ တစ်ခါတည်း ပါလာအောင် include သုံးပါတယ်
       },
     });
 
-    if (!category) {
-      return res.status(404).json({ message: "Category မတွေ့ပါ" });
-    }
-
-    return res.json(category);
+    res.status(200).json(data);
   } catch (error) {
-    return res.status(500).json({ message: "Error fetching category" });
+    res.status(500).json({ error: "Data ဆွဲယူရာတွင် အမှားအယွင်းရှိပါသည်။" });
   }
 });
 
-// 2. Items တွေကို Category အလိုက် Filter လုပ်ပြီး ယူမယ့် Route
-// GET /categories/:id/items
-// ဥပမာ - /categories/5/items လို့ ခေါ်ရင် ID 5 ဖြစ်တဲ့ category အောက်က items တွေပဲ ကျလာမယ်
-
-router.get("/categories/:id/items", async (req, res) => {
+/**
+ * 2. POST - Create Category or Item
+ * POST: /api/menu
+ */
+router.post("/menu", async (req, res) => {
   try {
-    const { id } = req.params; // URL path ထဲက id ကို ယူတာပါ (:id)
+    const { target, ...payload } = req.body; // target: 'category' or 'item'
+
+    if (target === "category") {
+      const category = await prisma.menuCategory.create({
+        data: {
+          name: payload.name,
+          menuType: payload.menuType,
+          image: payload.image,
+        },
+      });
+      return res.status(201).json(category);
+    }
+
+    if (target === "item") {
+      const item = await prisma.menuItem.create({
+        data: {
+          name: payload.name,
+          price: Number(payload.price),
+          description: payload.description,
+          image: payload.image,
+          menuCategoryId: Number(payload.menuCategoryId),
+        },
+      });
+      return res.status(201).json(item);
+    }
+
+    res.status(400).json({ error: "Invalid target. Use 'category' or 'item'." });
+  } catch (error) {
+    res.status(400).json({ error: "Creation failed" });
+  }
+});
+
+// ---------------------------------------------------------
+// 1. GET ALL ITEMS (With Filter & Search)
+// GET: /api/items?name=Mohinga
+// ---------------------------------------------------------
+router.get("/items", async (req, res) => {
+  try {
+    const { name, available } = req.query;
 
     const items = await prisma.menuItem.findMany({
       where: {
-        categoryId: Number(id), // path ကလာတဲ့ id နဲ့ filter လုပ်မယ်
+        // နာမည်နဲ့ ရှာချင်ရင် (Case-insensitive)
+        ...(name ? { name: { contains: String(name) } } : {}),
+        // ရနိုင်တဲ့ item တွေပဲ ကြည့်ချင်ရင်
+        ...(available ? { isAvailable: available === "true" } : {}),
       },
-      orderBy: {
-        id: "asc",
+      include: {
+        menuCategory: true, // ဘယ် Category အောက်ကလဲဆိုတာ သိရအောင်
       },
     });
 
-    if (items.length === 0) {
-      return res.status(404).json({ message: "ဤ category အောက်တွင် menu မရှိသေးပါ" });
-    }
-
-    return res.json(items);
+    res.json(items);
   } catch (error) {
-    return res.status(500).json({ message: "Error fetching items for this category" });
+    res.status(500).json({ error: "Items ဆွဲယူရာတွင် အမှားအယွင်းရှိပါသည်။" });
+  }
+});
+
+// ---------------------------------------------------------
+// 2. GET SINGLE ITEM (By ID)
+// ---------------------------------------------------------
+router.get("/items/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = await prisma.menuItem.findUnique({
+      where: { id: Number(id) },
+      include: { menuCategory: true },
+    });
+
+    if (!item) return res.status(404).json({ error: "Item မတွေ့ပါ။" });
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching item" });
+  }
+});
+
+// ---------------------------------------------------------
+// 3. CREATE ITEM
+// ---------------------------------------------------------
+router.post("/items", async (req, res) => {
+  try {
+    const { name, price, description, image, menuCategoryId } = req.body;
+
+    const newItem = await prisma.menuItem.create({
+      data: {
+        name,
+        price: Number(price),
+        description,
+        image,
+        menuCategoryId: Number(menuCategoryId),
+      },
+    });
+    res.status(201).json(newItem);
+  } catch (error) {
+    res.status(400).json({ error: "Item အသစ်ထည့်၍ မရပါ။" });
+  }
+});
+
+// ---------------------------------------------------------
+// 4. UPDATE ITEM
+// ---------------------------------------------------------
+router.put("/items/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, price, description, image, isAvailable } = req.body;
+
+    const updatedItem = await prisma.menuItem.update({
+      where: { id: Number(id) },
+      data: {
+        name,
+        price: price ? Number(price) : undefined,
+        description,
+        image,
+        isAvailable,
+      },
+    });
+    res.json(updatedItem);
+  } catch (error) {
+    res.status(400).json({ error: "Update လုပ်၍ မရပါ။" });
+  }
+});
+
+// ---------------------------------------------------------
+// 5. DELETE ITEM
+// ---------------------------------------------------------
+router.delete("/items/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.menuItem.delete({
+      where: { id: Number(id) },
+    });
+    res.json({ message: "Item ကို ဖျက်ပြီးပါပြီ။" });
+  } catch (error) {
+    res.status(400).json({ error: "ဖျက်၍ မရပါ။" });
   }
 });

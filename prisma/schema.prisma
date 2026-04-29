@@ -35,12 +35,11 @@ enum AdminRole {
 
 // 2. Menu Management
 model MenuCategory {
-  id        Int        @id @default(autoincrement())
-  name      String     // e.g., "Daily Starter", "Main Course"
-  menuType  String     // "Daily", "Tasting", "Sunday"
-  items     MenuItem[] 
-
-  @@map("menu_categories")
+  id        Int      @id @default(autoincrement())
+  name      String
+  menuType  String
+  image     String  // <--- Make sure this line exists!
+  items     MenuItem[]
 }
 
 model MenuItem {
@@ -49,11 +48,10 @@ model MenuItem {
   description String?      
   price       Int?         // တွက်ချက်ရလွယ်ကူစေရန် Int ပြောင်းထားပါသည် (e.g., 1180)
   isAvailable Boolean      @default(true)
+  image         String
+  menuCategoryId Int
+  menuCategory   MenuCategory @relation(fields: [menuCategoryId], references: [id])
   
-  categoryId  Int
-  category    MenuCategory @relation(fields: [categoryId], references: [id])
-
-  @@map("menu_items")
 }
 
 // 3. Reservation System

@@ -39,114 +39,176 @@ async function seed() {
   }
   console.log("Seed success!");
 
+  console.log("🌱 Menu Categories seeding စတင်နေပါပြီ...");
+
   const categories = [
-    // 1. Daily Menu (နေ့စဉ်ရနိုင်သော မီနူး)
-    { name: "Daily Starters", menuType: "Daily" },
-    { name: "Main Courses", menuType: "Daily" },
-    { name: "Side Dishes", menuType: "Daily" },
-
-    // 2. Tasting Menu (အထူးမြည်းစမ်းမီနူး)
-    { name: "Seasonal Bites", menuType: "Tasting" },
-    { name: "Chef's Specials", menuType: "Tasting" },
-    { name: "Wine Pairings", menuType: "Tasting" },
-
-    // 3. Sunday Menu (တနင်္ဂနွေ အထူးမီနူး)
-    { name: "Sunday Roast", menuType: "Sunday" },
-    { name: "Brunch Selection", menuType: "Sunday" },
+    {
+      name: "Daily Starters",
+      menuType: "Daily",
+      image: "https://harlanrestaurant.com/images/categories/1776939880_4ceafcd6-2535-4515-9e16-cb17c585920d.JPG",
+    },
+    {
+      name: "Traditional Breakfast",
+      menuType: "Morning",
+      image: "https://harlanrestaurant.com/images/categories/1776939897_98baf2e2-c21b-4825-b726-b2a609b25307.JPG",
+    },
+    {
+      name: "Main Courses",
+      menuType: "Lunch",
+      image: "https://harlanrestaurant.com/images/categories/1776756729_25bb7d3e-6fd9-4acc-9992-7204f3b2d824.jpeg",
+    },
+    {
+      name: "Special Dinner",
+      menuType: "Evening",
+      image: "https://harlanrestaurant.com/images/categories/1777036541_Copy%20of%20Red%20Luxury%20Wine%20Menu%20(1).jpg",
+    },
+    {
+      name: "Fresh Drinks",
+      menuType: "Daily",
+      image: "https://harlanrestaurant.com/images/categories/1777036541_Copy%20of%20Red%20Luxury%20Wine%20Menu%20(1).jpg",
+    },
+    {
+      name: "Sweet Desserts",
+      menuType: "Daily",
+      image: "https://harlanrestaurant.com/images/categories/1777036589_Copy%20of%20Red%20Luxury%20Wine%20Menu.jpg",
+    },
   ];
 
-  console.log("⏳ Seeding Menu Categories...");
-
   for (const cat of categories) {
-    // 💡 Schema မှာ name က @unique မဟုတ်တဲ့အတွက်
-    // အရင်ရှိမရှိ စစ်ပြီးမှ ထည့်တဲ့ logic ကို သုံးပေးထားပါတယ်
+    // 💡 Schema မှာ unique မဟုတ်လို့ အရင်ရှိမရှိ စစ်တဲ့ logic ကို သုံးထားပါတယ်
     const existing = await prisma.menuCategory.findFirst({
-      where: { name: cat.name, menuType: cat.menuType },
+      where: {
+        name: cat.name,
+        menuType: cat.menuType,
+      },
     });
 
     if (!existing) {
       await prisma.menuCategory.create({
-        data: cat,
+        data: {
+          name: cat.name,
+          menuType: cat.menuType,
+          image: cat.image,
+        },
       });
+      console.log(`✅ Created category: ${cat.name}`);
+    } else {
+      console.log(`⏩ Skipped: ${cat.name} `);
     }
   }
-  console.log("✅ Menu Categories Seeded!");
 
-  console.log("⏳ Seeding Menu Items...");
+  console.log("✨ Seeding");
 
-  // ၁။ Category များကို နာမည်ဖြင့် ရှာဖွေရန် function
-  const getCatId = async (name: string) => {
-    const cat = await prisma.menuCategory.findFirst({ where: { name } });
-    return cat?.id;
-  };
+  console.log("🌱 MenuItem seeding (with images) ");
 
-  // ၂။ Data စုစည်းမှု (Category အလိုက် Item များ)
-  const items = [
-    // --- Daily Menu ---
+  const menuItemsData = [
     {
-      name: "Classic Caesar Salad",
-      description: "Romaine lettuce, parmesan, croutons with Caesar dressing",
-      price: 450,
-      catName: "Daily Starters",
+      categoryName: "Daily Starters",
+      menuType: "Daily",
+      items: [
+        {
+          name: "Crispy Spring Rolls",
+          price: 5500,
+          description: "Fresh vegetables wrapped in crispy pastry",
+          image: "https://images.unsplash.com/photo-1544333346-64e4fe1827ff",
+        },
+        {
+          name: "Samosa Salad",
+          price: 4000,
+          description: "Traditional tea shop style samosa salad with cabbage",
+          image: "https://images.unsplash.com/photo-1601050690597-df056fb01793",
+        },
+      ],
     },
     {
-      name: "Grilled Wagyu Striploin",
-      description: "200g Wagyu beef with red wine jus and mashed potatoes",
-      price: 2400,
-      catName: "Main Courses",
-    },
-
-    // --- Tasting Menu ---
-    {
-      name: "Hokkaido Scallop Carpaccio",
-      description: "Thinly sliced scallops with yuzu vinaigrette",
-      price: 1200,
-      catName: "Seasonal Bites",
-    },
-    {
-      name: "Truffle Infused Risotto",
-      description: "Creamy risotto with fresh black truffle shavings",
-      price: 1800,
-      catName: "Chef's Specials",
-    },
-
-    // --- Sunday Menu ---
-    {
-      name: "Traditional Roast Beef",
-      description: "Slow-roasted beef with Yorkshire pudding and gravy",
-      price: 1950,
-      catName: "Sunday Roast",
+      categoryName: "Traditional Breakfast",
+      menuType: "Morning",
+      items: [
+        {
+          name: "Mohinga",
+          price: 3500,
+          description: "Iconic Burmese fish soup with rice noodles",
+          image: "https://images.unsplash.com/photo-1625398407796-82650a8c135f",
+        },
+        {
+          name: "Nan Gyi Thoke",
+          price: 4500,
+          description: "Mandalay style thick rice noodle salad",
+          image: "https://images.unsplash.com/photo-1585032226651-759b368d7246",
+        },
+      ],
     },
     {
-      name: "Eggs Benedict Platter",
-      description: "Poached eggs, smoked salmon on English muffins",
-      price: 850,
-      catName: "Brunch Selection",
+      categoryName: "Fresh Drinks",
+      menuType: "Daily",
+      items: [
+        {
+          name: "Iced Thai Milk Tea",
+          price: 3500,
+          description: "Authentic Thai tea with creamy milk",
+          image: "https://images.unsplash.com/photo-1570197571499-166b36435e9f",
+        },
+        {
+          name: "Lime Sparkling Soda",
+          price: 2800,
+          description: "Refreshing lime with soda and mint",
+          image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd",
+        },
+      ],
+    },
+    {
+      categoryName: "Sweet Desserts",
+      menuType: "Daily",
+      items: [
+        {
+          name: "Shwe Yin Aye",
+          price: 4500,
+          description: "Burmese coconut milk dessert with jelly and bread",
+          image: "https://images.unsplash.com/photo-1563805042-7684c019e1cb",
+        },
+      ],
     },
   ];
 
-  // ၃။ Loop ပတ်ပြီး Database ထဲထည့်ခြင်း
-  for (const item of items) {
-    const categoryId = await getCatId(item.catName);
+  for (const group of menuItemsData) {
+    // ၁. Category ကို အရင်ရှာမယ်
+    const category = await prisma.menuCategory.findFirst({
+      where: {
+        name: group.categoryName,
+        menuType: group.menuType,
+      },
+    });
 
-    if (categoryId) {
-      await prisma.menuItem.upsert({
-        where: { id: 0 }, // New record အနေနဲ့ပဲ အမြဲထည့်ချင်လျှင် (သို့မဟုတ် name ဖြင့်စစ်နိုင်သည်)
-        update: {},
-        create: {
-          name: item.name,
-          description: item.description,
-          price: item.price,
-          isAvailable: true,
-          categoryId: categoryId,
-        },
-      });
+    if (category) {
+      for (const item of group.items as any[]) {
+        // ၂. Item ရှိမရှိ စစ်ပြီးမှ ထည့်မယ်
+        const existingItem = await prisma.menuItem.findFirst({
+          where: {
+            name: item.name,
+            menuCategoryId: category.id,
+          },
+        });
+
+        if (!existingItem) {
+          await prisma.menuItem.create({
+            data: {
+              name: item.name,
+              price: item.price,
+              description: item.description,
+              image: item.image,
+              isAvailable: true,
+              menuCategoryId: category.id,
+            },
+          });
+          console.log(`✅ Item: ${item.name} ကို ${group.categoryName}`);
+        }
+      }
     } else {
-      console.log(`⚠️ Warning: Category "${item.catName}" ကို ရှာမတွေ့၍ "${item.name}" ကို ထည့်မရပါ`);
+      console.log(`❌ Category: ${group.categoryName}`);
     }
   }
 
-  console.log("✅ Menu Items အားလုံး ထည့်သွင်းပြီးပါပြီ။");
+  console.log("✨ MenuItem Seeding အားလုံးပြီးပါပြီ။");
 
   const galleryItems = [
     // 1. Event Photos
