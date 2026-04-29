@@ -2,242 +2,284 @@ import { prisma } from "../libs/prisma";
 import bcrypt from "bcrypt";
 
 async function seed() {
-  // ၁။ Admin User တစ်ယောက် အရင်ဆောက်မည်
-  const user = await prisma.user.create({
+  console.log("Adding admin user...");
+  await prisma.adminUser.create({
     data: {
-      name: "Harlan",
-      email: "harlan@gmail.com",
-      password: await bcrypt.hash("123456", 10),
+      email: "admin@gmail.com",
+      password: await bcrypt.hash("admin123", 10),
       role: "ADMIN",
+      lastLogin: new Date(),
+      isActive: true,
     },
   });
-  console.log("Admin User created:", user.name);
+  console.log("Admin user added successfully.");
 
-  // ၂။ Opening Hours များ ထည့်သွင်းခြင်း
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  for (const day of days) {
-    await prisma.hours.create({
-      data: {
-        dayOfWeek: day,
-        shiftName: "Lunch",
-        openTime: "12:00 PM",
-        closeTime: "10:30 PM",
-        isClosed: false,
+  const openingHoursData = [
+    { dayOfWeek: "Monday", openTime: "05:00 PM", closeTime: "10:00 PM", isClosed: false },
+    { dayOfWeek: "Tuesday", openTime: "05:00 PM", closeTime: "10:00 PM", isClosed: false },
+    { dayOfWeek: "Wednesday", openTime: "05:00 PM", closeTime: "10:00 PM", isClosed: false },
+    { dayOfWeek: "Thursday", openTime: "05:00 PM", closeTime: "10:00 PM", isClosed: false },
+    { dayOfWeek: "Friday", openTime: "05:00 PM", closeTime: "11:00 PM", isClosed: false },
+    { dayOfWeek: "Saturday", openTime: "11:00 AM", closeTime: "11:00 PM", isClosed: false },
+    { dayOfWeek: "Sunday", openTime: null, closeTime: null, isClosed: true },
+  ];
+
+  console.log("⏳ Seeding opening hours...");
+
+  for (const hour of openingHoursData) {
+    await prisma.openingHour.upsert({
+      where: { dayOfWeek: hour.dayOfWeek },
+      update: {
+        openTime: hour.openTime,
+        closeTime: hour.closeTime,
+        isClosed: hour.isClosed,
       },
+      create: hour,
     });
   }
-  console.log("Opening Hours created");
+  console.log("Seed success!");
 
-  // ၃။ Categories တစ်ခုချင်းစီ ဆောက်ပြီး Array ထဲ သိမ်းထားမည်
-  const categoryNames = [
-    { name: "Main Menu", slug: "main-menu", type: "FOOD" },
-    { name: "Wine List", slug: "wine-list", type: "WINE" },
-    { name: "Desserts", slug: "desserts", type: "FOOD" },
-    { name: "Beverages", slug: "beverages", type: "FOOD" },
-    { name: "Drinks", slug: "drinks", type: "FOOD" },
+  const categories = [
+    // 1. Daily Menu (နေ့စဉ်ရနိုင်သော မီနူး)
+    { name: "Daily Starters", menuType: "Daily" },
+    { name: "Main Courses", menuType: "Daily" },
+    { name: "Side Dishes", menuType: "Daily" },
+
+    // 2. Tasting Menu (အထူးမြည်းစမ်းမီနူး)
+    { name: "Seasonal Bites", menuType: "Tasting" },
+    { name: "Chef's Specials", menuType: "Tasting" },
+    { name: "Wine Pairings", menuType: "Tasting" },
+
+    // 3. Sunday Menu (တနင်္ဂနွေ အထူးမီနူး)
+    { name: "Sunday Roast", menuType: "Sunday" },
+    { name: "Brunch Selection", menuType: "Sunday" },
   ];
 
-  const categories = [];
-  for (const cat of categoryNames) {
-    const createdCat = await prisma.category.create({ data: cat });
-    categories.push(createdCat);
-  }
-  console.log("Categories created");
+  console.log("⏳ Seeding Menu Categories...");
 
-  // ၄။ Food Items များ ထည့်သွင်းခြင်း (categories[index]!.id ကို သုံးထားသည်)
-  const foodItemsData = [
-    {
-      name: "Chicken Wings",
-      description: "Chicken Wings",
-      price: 10,
-      image: "https://www.food.com/recipe/chicken-wings-100-recipes",
-      isFeatured: true,
-      isAvailable: true,
-      categoryId: categories[0]!.id,
-    },
-    {
-      name: "Chicken Tikka Masala",
-      description: "Chicken Tikka Masala",
-      price: 10,
-      image: "https://www.food.com/recipe/chicken-tikka-masala-100-recipes",
-      isFeatured: true,
-      isAvailable: true,
-      categoryId: categories[1]!.id,
-    },
-    {
-      name: "Chicken Curry",
-      description: "Chicken Curry",
-      price: 10,
-      image: "https://www.food.com/recipe/chicken-curry-100-recipes",
-      isFeatured: true,
-      isAvailable: true,
-      categoryId: categories[2]!.id,
-    },
-    {
-      name: "Chicken Biryani",
-      description: "Chicken Biryani",
-      price: 10,
-      image: "https://www.food.com/recipe/chicken-biryani-100-recipes",
-      isFeatured: true,
-      isAvailable: true,
-      categoryId: categories[3]!.id,
-    },
-    {
-      name: "Chicken Kebab",
-      description: "Chicken Kebab",
-      price: 10,
-      image: "https://www.food.com/recipe/chicken-kebab-100-recipes",
-      isFeatured: true,
-      isAvailable: true,
-      categoryId: categories[4]!.id,
-    },
-  ];
-
-  await prisma.foodItem.createMany({ data: foodItemsData });
-  console.log("Food items created successfully!");
-
-  // ၅။ Venue များ ထည့်သွင်းခြင်း
-  console.log("Venues creating...");
-
-  const venuesData = [
-    {
-      name: "The Terrace",
-      slug: "the-terrace",
-      description: "အပြင်ဘက်လေကောင်းလေသန့်ရရှိနိုင်ပြီး မြို့ပြအလှကို ခံစားနိုင်မည့်နေရာ။",
-      capacity: 50,
-      image: "https://images.unsplash.com/photo-1533105079780-92b9be482077",
-    },
-    {
-      name: "Private Room A",
-      slug: "private-room-a",
-      description: "မိသားစု သို့မဟုတ် စီးပွားရေးလုပ်ငန်းရှင်များ သီးသန့်ဆွေးနွေးတိုင်ပင်ရန် နေရာကောင်း။",
-      capacity: 12,
-      image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-    },
-    {
-      name: "Main Dining Hall",
-      slug: "main-dining-hall",
-      description: "ကျယ်ဝန်းလှပသော ခန်းမဆောင်ကြီးအတွင်း အရသာရှိသော အစားအစာများကို သုံးဆောင်နိုင်ပါသည်။",
-      capacity: 100,
-      image: "https://images.unsplash.com/photo-1552566626-52f8b828add9",
-    },
-    {
-      name: "The Cellar",
-      slug: "the-cellar",
-      description: "ဝိုင်အကောင်းစားများကို မြည်းစမ်းရင်း အေးအေးဆေးဆေး စကားပြောဆိုနိုင်မည့်နေရာ။",
-      capacity: 20,
-      image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3",
-    },
-  ];
-
-  for (const venue of venuesData) {
-    await prisma.venue.upsert({
-      where: { slug: venue.slug },
-      update: {}, // ရှိပြီးသားဆိုရင် ဘာမှမပြင်ဘူး
-      create: venue, // မရှိသေးရင် အသစ်ဆောက်မယ်
+  for (const cat of categories) {
+    // 💡 Schema မှာ name က @unique မဟုတ်တဲ့အတွက်
+    // အရင်ရှိမရှိ စစ်ပြီးမှ ထည့်တဲ့ logic ကို သုံးပေးထားပါတယ်
+    const existing = await prisma.menuCategory.findFirst({
+      where: { name: cat.name, menuType: cat.menuType },
     });
+
+    if (!existing) {
+      await prisma.menuCategory.create({
+        data: cat,
+      });
+    }
   }
+  console.log("✅ Menu Categories Seeded!");
 
-  console.log("Venues created successfully!");
+  console.log("⏳ Seeding Menu Items...");
 
-  console.log("Inquiries creating...");
-  // အရင်ဆုံး Venue တစ်ခုခုရဲ့ ID ကို ယူမယ် (Relationship အတွက်)
-  const venue = await prisma.venue.findFirst({ where: { slug: "the-terrace" } });
+  // ၁။ Category များကို နာမည်ဖြင့် ရှာဖွေရန် function
+  const getCatId = async (name: string) => {
+    const cat = await prisma.menuCategory.findFirst({ where: { name } });
+    return cat?.id;
+  };
 
-  const inquiriesData = [
+  // ၂။ Data စုစည်းမှု (Category အလိုက် Item များ)
+  const items = [
+    // --- Daily Menu ---
     {
-      type: "RESERVATION",
-      name: "U Ba",
-      email: "uba@gmail.com",
-      phone: "09123456789",
-      eventDate: new Date("2026-05-10T18:30:00Z"),
-      guestCount: 4,
-      message: "Window seat ရရင် ပိုကောင်းပါတယ်။",
-      status: "CONFIRMED",
+      name: "Classic Caesar Salad",
+      description: "Romaine lettuce, parmesan, croutons with Caesar dressing",
+      price: 450,
+      catName: "Daily Starters",
     },
     {
-      type: "EVENT",
-      name: "Daw Mya",
-      email: "dawmya@outlook.com",
-      phone: "09987654321",
-      eventDate: new Date("2026-06-15T10:00:00Z"),
-      guestCount: 30,
-      message: "Birthday party ကျင်းပချင်လို့ပါ။ နေ့လည်စာ menu သိပါရစေ။",
-      status: "PENDING",
-      venueId: venue?.id, // The Terrace မှာ ပွဲလုပ်ဖို့ inquiry လုပ်ထားတဲ့ပုံစံ
+      name: "Grilled Wagyu Striploin",
+      description: "200g Wagyu beef with red wine jus and mashed potatoes",
+      price: 2400,
+      catName: "Main Courses",
+    },
+
+    // --- Tasting Menu ---
+    {
+      name: "Hokkaido Scallop Carpaccio",
+      description: "Thinly sliced scallops with yuzu vinaigrette",
+      price: 1200,
+      catName: "Seasonal Bites",
     },
     {
-      type: "RESERVATION",
-      name: "Harlan Fan",
-      email: "fan@harlan.com",
-      phone: "09444555666",
-      eventDate: new Date("2026-05-12T19:00:00Z"),
-      guestCount: 2,
-      message: "Anniversary အတွက်ပါ။",
-      status: "PENDING",
+      name: "Truffle Infused Risotto",
+      description: "Creamy risotto with fresh black truffle shavings",
+      price: 1800,
+      catName: "Chef's Specials",
+    },
+
+    // --- Sunday Menu ---
+    {
+      name: "Traditional Roast Beef",
+      description: "Slow-roasted beef with Yorkshire pudding and gravy",
+      price: 1950,
+      catName: "Sunday Roast",
     },
     {
-      type: "EVENT",
-      name: "Tech Company Ltd.",
-      email: "hr@techco.com",
-      phone: "09777888999",
-      eventDate: new Date("2026-07-01T17:00:00Z"),
-      guestCount: 45,
-      message: "Company Dinner လုပ်ဖို့အတွက်ပါ။",
-      status: "CANCELLED",
+      name: "Eggs Benedict Platter",
+      description: "Poached eggs, smoked salmon on English muffins",
+      price: 850,
+      catName: "Brunch Selection",
     },
   ];
 
-  for (const inquiry of inquiriesData) {
-    await prisma.inquiry.create({
-      data: inquiry,
-    });
-  }
-  console.log("Inquiries created successfully!");
+  // ၃။ Loop ပတ်ပြီး Database ထဲထည့်ခြင်း
+  for (const item of items) {
+    const categoryId = await getCatId(item.catName);
 
-  console.log("Gallery images creating...");
-  const galleryData = [
-    // INTERIOR (ဆိုင်အပြင်အဆင်)
+    if (categoryId) {
+      await prisma.menuItem.upsert({
+        where: { id: 0 }, // New record အနေနဲ့ပဲ အမြဲထည့်ချင်လျှင် (သို့မဟုတ် name ဖြင့်စစ်နိုင်သည်)
+        update: {},
+        create: {
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          isAvailable: true,
+          categoryId: categoryId,
+        },
+      });
+    } else {
+      console.log(`⚠️ Warning: Category "${item.catName}" ကို ရှာမတွေ့၍ "${item.name}" ကို ထည့်မရပါ`);
+    }
+  }
+
+  console.log("✅ Menu Items အားလုံး ထည့်သွင်းပြီးပါပြီ။");
+
+  const galleryItems = [
+    // 1. Event Photos
     {
-      imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4",
-      category: "INTERIOR",
-      caption: "Harlan ရဲ့ ခေတ်မီပြီး ဆိတ်ငြိမ်လှပသော ဆိုင်အတွင်းပိုင်း အပြင်အဆင်။",
+      title: "Grand Opening Night",
+      type: "image",
+      url: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b",
+      category: "Event",
     },
+    // 2. Birthday Celebration (Video)
     {
-      imageUrl: "https://images.unsplash.com/photo-1552566626-52f8b828add9",
-      category: "INTERIOR",
-      caption: "နွေးထွေးသော အလင်းရောင်နှင့်အတူ အကောင်းဆုံး Dining Experience။",
+      title: "Chef Harlan Birthday Surprise",
+      type: "video",
+      url: "https://www.youtube.com/watch?v=example1",
+      category: "Birthday",
     },
-    // CUISINE (အစားအသောက်)
+    // 3. Private Party
     {
-      imageUrl: "https://images.unsplash.com/photo-1504674900247-0877df9cc836",
-      category: "CUISINE",
-      caption: "ကျွန်ုပ်တို့၏ Signature Steak - အရသာနှင့် အနံ့ပြည့်စုံသော ဟင်းလျာ။",
+      title: "Exclusive Wine Tasting Party",
+      type: "image",
+      url: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3",
+      category: "Party",
     },
+    // 4. Anniversary Event
     {
-      imageUrl: "https://images.unsplash.com/photo-1551024506-0bccd828d307",
-      category: "CUISINE",
-      caption: "လတ်ဆတ်သော ပါဝင်ပစ္စည်းများဖြင့် ဖန်တီးထားသည့် အချိုပွဲများ။",
+      title: "5th Year Anniversary Dinner",
+      type: "image",
+      url: "https://images.unsplash.com/photo-1559339352-11d035aa65de",
+      category: "Event",
     },
-    // EVENTS (ပွဲလမ်းသဘင်များ)
+    // 5. Customer Birthday
     {
-      imageUrl: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622",
-      category: "EVENTS",
-      caption: "Harlan မှာ ကျင်းပခဲ့သော ပျော်ရွှင်စရာ Birthday Party အမှတ်တရ။",
-    },
-    {
-      imageUrl: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf",
-      category: "EVENTS",
-      caption: "Private Room A တွင် ကျင်းပသည့် စီးပွားရေးလုပ်ငန်းရှင်များ၏ ညစာစားပွဲ။",
+      title: "Guest Birthday Celebration",
+      type: "image",
+      url: "https://images.unsplash.com/photo-1464349153735-7db50ed83c84",
+      category: "Birthday",
     },
   ];
 
-  for (const item of galleryData) {
-    await prisma.gallery.create({
+  console.log("⏳ Seeding Gallery Items...");
+
+  for (const item of galleryItems) {
+    await prisma.galleryItem.create({
       data: item,
     });
   }
-  console.log("Gallery created successfully!");
+
+  console.log("Start seeding contact messages...");
+
+  const contactMessages = [
+    {
+      userName: "U Kyaw Kyaw",
+      userEmail: "kyawkyaw@gmail.com",
+      subject: "Inquiry about Private Party",
+      message: "I would like to host a birthday party for 20 people next month. Do you have a private room?",
+      isRead: false,
+    },
+    {
+      userName: "Ms. Sarah Jones",
+      userEmail: "sarah.j@example.com",
+      subject: "Dietary Requirements",
+      message: "Hello, I have a reservation tomorrow. Just wanted to confirm if you offer gluten-free options in the Tasting Menu.",
+      isRead: true, // Admin ဖတ်ပြီးသားအဖြစ် နမူနာပြထားခြင်း
+    },
+    {
+      userName: "Daw Nu Nu",
+      userEmail: "nunu.pattaya@outlook.com",
+      subject: "Career Opportunity",
+      message: "I am a pastry chef with 5 years of experience. Are you currently hiring?",
+      isRead: false,
+    },
+  ];
+
+  for (const msg of contactMessages) {
+    const createdMsg = await prisma.contactMessage.create({
+      data: msg,
+    });
+    console.log(`Created message from: ${createdMsg.userName}`);
+  }
+
+  console.log("Seeding contact messages finished.");
+
+  console.log("⏳ Seeding Reservations...");
+
+  const reservations = [
+    {
+      bookingDate: "05/15/2024",
+      bookingTime: "06:30 PM",
+      guestsCount: 4,
+      selectedMenu: "Tasting Menu",
+      guestName: "U Ba Kaung",
+      phoneNumber: "09123456789",
+      email: "bakaung@gmail.com",
+      specialNotes: "Allergic to peanuts. Prefer a window seat.",
+      status: "confirmed",
+      agreedToTerms: true,
+      understoodLeadTime: true,
+    },
+    {
+      bookingDate: "05/20/2024",
+      bookingTime: "07:00 PM",
+      guestsCount: 2,
+      selectedMenu: "Daily Menu",
+      guestName: "Daw Mya Mya",
+      phoneNumber: "09987654321",
+      email: "myamya@outlook.com",
+      status: "pending",
+      agreedToTerms: true,
+      understoodLeadTime: true,
+    },
+    {
+      bookingDate: "06/01/2024",
+      bookingTime: "12:00 PM",
+      guestsCount: 10,
+      selectedMenu: "Sunday Menu",
+      guestName: "Mr. John Doe",
+      phoneNumber: "09444555666",
+      email: "john.doe@example.com",
+      otherContactId: "@johndoe_line",
+      specialNotes: "Birthday celebration",
+      status: "confirmed",
+      agreedToTerms: true,
+      understoodLeadTime: true,
+    },
+  ];
+
+  for (const res of reservations) {
+    await prisma.reservation.create({
+      data: res,
+    });
+  }
+
+  console.log("✅ Reservations Seeded!");
 }
 
 seed()

@@ -13,81 +13,105 @@ datasource db {
 }
 
 
-// 1. Admin & Authentication Layer
-model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String   // Hashed password
-  role      String   @default("ADMIN") 
-  createdAt DateTime @default(now())
+// 1. Admin Authentication (အသစ်ဖြည့်စွက်ချက်)
+model AdminUser {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  password      String    // Hash လုပ်ထားသော Password သာသိမ်းရန်
+  role          AdminRole @default(ADMIN)
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("admin_users")
 }
 
-// 2. Menu Management (Harlan's Dining & Wine Selection)
-model Category {
+enum AdminRole {
+  SUPERADMIN
+  ADMIN
+}
+
+// 2. Menu Management
+model MenuCategory {
   id        Int        @id @default(autoincrement())
-  name      String     @unique // "Main Menu", "Wine List", "Desserts"
-  slug      String     @unique // URL အတွက် (ဥပမာ- wine-cellar)
-  type      String     @default("FOOD") // "FOOD" သို့မဟုတ် "WINE"
-  foodItems FoodItem[]
+  name      String     // e.g., "Daily Starter", "Main Course"
+  menuType  String     // "Daily", "Tasting", "Sunday"
+  items     MenuItem[] 
+
+  @@map("menu_categories")
 }
 
-model FoodItem {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?  
-  price       Float?   // အချို့ Fine Dining Menu များတွင် ဈေးနှုန်းမပြပါ
-  image       String?
-  isFeatured  Boolean  @default(false) // Home page မှာပြရန်
-  isAvailable Boolean  @default(true)  // ပစ္စည်းပြတ်ပါက ပိတ်ရန်
+model MenuItem {
+  id          Int          @id @default(autoincrement())
+  name        String       
+  description String?      
+  price       Int?         // တွက်ချက်ရလွယ်ကူစေရန် Int ပြောင်းထားပါသည် (e.g., 1180)
+  isAvailable Boolean      @default(true)
+  
   categoryId  Int
-  category    Category @relation(fields: [categoryId], references: [id])
+  category    MenuCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("menu_items")
 }
 
-// 3. Event Spaces & Private Dining (Harlan's Core Experience)
-model Venue {
-  id          Int      @id @default(autoincrement())
-  name        String   // "The Terrace", "Private Room A"
-  slug        String   @unique
-  description String?  
-  capacity    Int      // ဧည့်သည်ဆံ့ဝင်ဦးရေ
-  image       String?
-  inquiries   Inquiry[]
+// 3. Reservation System
+model Reservation {
+  id                 Int      @id @default(autoincrement())
+  bookingDate        String   // mm/dd/yyyy
+  bookingTime        String   // hh:mm AM/PM
+  guestsCount        Int
+  selectedMenu       String   
+  
+  guestName          String
+  phoneNumber        String
+  email              String
+  otherContactId     String?  
+  specialNotes       String?
+  
+  status             String   @default("pending") // pending, confirmed, cancelled
+  agreedToTerms      Boolean  @default(false)
+  understoodLeadTime Boolean  @default(false) 
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("reservations")
 }
 
-// 4. Inquiries & Reservations (Customer Leads)
-model Inquiry {
-  id             Int      @id @default(autoincrement())
-  type           String   // "RESERVATION" သို့မဟုတ် "EVENT"
-  name           String
-  email          String
-  phone          String
-  eventDate      DateTime
-  guestCount     Int
-  message        String?  
-  status         String   @default("PENDING") // "PENDING", "CONFIRMED", "CANCELLED"
-  venueId        Int?
-  venue          Venue?   @relation(fields: [venueId], references: [id])
-  createdAt      DateTime @default(now())
+// 4. Opening Hours
+model OpeningHour {
+  id        Int      @id @default(autoincrement())
+  dayOfWeek String   @unique // Monday, Tuesday, etc.
+  openTime  String?  
+  closeTime String?  
+  isClosed  Boolean  @default(false)
+
+  @@map("opening_hours")
 }
 
+// 5. Gallery
+model GalleryItem {
+  id        Int      @id @default(autoincrement())
+  title     String
+  type      String   // "image" or "video"
+  url       String   
+  category  String   // Event, Party, Birthday
+  createdAt DateTime @default(now())
 
-
-// 6. Gallery (Brand Image)
-model Gallery {
-  id       Int     @id @default(autoincrement())
-  imageUrl String
-  category String  // "INTERIOR", "CUISINE", "EVENTS"
-  caption  String?
+  @@map("gallery_items")
 }
 
-model Hours {
-  id          Int      @id @default(autoincrement())
-  dayOfWeek   String   // "Monday", "Tuesday", etc. သို့မဟုတ် "Daily"
-  shiftName   String?  // "Lunch", "Dinner", "All Day"
-  openTime    String   // "12:00 PM"
-  closeTime   String   // "10:30 PM"
-  isClosed    Boolean  @default(false) // ထိုနေ့တွင် ဆိုင်ပိတ်ပါက true
-  updatedAt   DateTime @updatedAt
-}
+// 6. Contact Messages
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  userName  String   // ပို့တဲ့သူ နာမည်
+  userEmail String   // ပို့တဲ့သူ Email
+  subject   String?  // ခေါင်းစဉ်
+  message   String   // ပေးပို့တဲ့ စာသား
+  isRead    Boolean  @default(false) // Admin ဖတ်ပြီး/မဖတ်ပြီး
+  createdAt DateTime @default(now())
 
+  @@map("contact_messages")
+}
